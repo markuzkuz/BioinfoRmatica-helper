@@ -1,6 +1,4 @@
 # BioinfoRmatica-helper
-Bienvenido a BioinfoRmatica-helper ! Tu repositorio de confianza dónde encontrarás: documentos, scripts, gráficos y todo lo que necesitas saber para utilizar R para el análisis bioinformático.
-# BioinfoRmatica-helper
 
 Bienvenido a **BioinfoRmatica-helper**, tu repositorio de confianza para el análisis bioinformático y la visualización de datos en R. Este repositorio contiene una variedad de recursos útiles, desde documentos de referencia hasta scripts y resultados de análisis. A continuación, se describe la estructura del repositorio y el contenido disponible.
 
