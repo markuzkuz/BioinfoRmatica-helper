@@ -1,0 +1,230 @@
+---
+title: "Actividad 1: Representación gráfica de datos y análisis de resultados"
+author: "Marc Casas Sebastián - Máster Bioinformática UNIR - Estadística y R"
+date: "2024-10-22 - Curso 2024-2025"
+output: 
+  html_document:
+    theme: default
+    css: custom1.css
+    toc: true
+    toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(dplyr)
+library(pheatmap)
+library(patchwork)
+data <- read.csv('data/expresion_genes.csv', header = TRUE, row.names = 1)
+```
+
+<br>
+<br>
+
+## Objetivos de la actividad
+Se utilizarán los conceptos aprendidos sobre visualización de datos biológicos y análisis estadístico mediante el dataset expresión de genes que contiene información de la expresión de 46 genes en 65 pacientes, cada uno con distintos tipos de tratamiento y características tumorales. El objetivo principal de la actividad es interpretar los datos mediante la generación de gráficos adecuados y la respuesta a preguntas específicas que se detallan a continuación.
+
+## Resolucion de ejercicios
+### Ejercicio 1
+Teniendo en cuenta los siguientes genes: AQ_ALOX5, AQ_CD274, AQ_CHKA, AQ_CSF2, AQ_FOXO3, AQ_IL6, AQ_LDHA, AQ_LIF, AQ_MAPK1, AQ_NOS2, AQ_IFNG, AQ_PDCD1, AQ_PPARG, AQ_TGFB1, AQ_TNF:
+
+Se representará la expresión de cada gen para los distintos tratamientos (A y B) mediante gráficos de diagrama de cajas (boxplot) para analizar la distribución de la expresión de los genes en los distintos tratmientos.
+
+Para hacer la actividad, con el dataset previamente cargado durante el bloque anterior "Rsetup" se construirá una lista que contenga los nombres de las columnas de los genes a analizar:
+
+```{r}
+
+# Lista de genes de interés
+genes <- c("AQ_ALOX5", "AQ_CD274", "AQ_CHKA", "AQ_CSF2", "AQ_FOXO3", 
+           "AQ_IL6", "AQ_LDHA", "AQ_LIF", "AQ_MAPK1", "AQ_NOS2", 
+           "AQ_IFNG", "AQ_PDCD1", "AQ_PPARG", "AQ_TGFB1", "AQ_TNF")
+
+# Seleccionar las columnas de interés: tratamiento y genes
+data_sel <- data[, c("trat", genes)]
+```
+
+
+Una vez tenemos los genes seleccionados, se podrían construir los boxplots uno a uno:
+
+```{r}
+# Crear gráficos de caja individuales para cada gen donde la x representa el tratamiento y la y cada gen
+bp1 <- ggplot(data_sel, aes(x = trat, y = AQ_ALOX5, fill = trat)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(x = "Tratamiento")
+
+
+bp2 <- ggplot(data_sel, aes(x = trat, y = AQ_CD274, fill = trat)) +
+  geom_boxplot() +  
+  theme_minimal() + 
+  theme(legend.position = "none") +
+  labs(x = "Tratamiento")
+
+
+bp3 <- ggplot(data_sel, aes(x = trat, y = AQ_CHKA, fill = trat)) +
+  geom_boxplot() + 
+  theme_minimal() + 
+  theme(legend.position = "none") +
+  labs(x = "Tratamiento")
+
+#Y continuar con los genes hasta el 15º ...
+```
+
+Aunque existen maneras mucho más óptimas de realizar este proceso y poder automatizar la construcción de boxplots.
+En este caso se utilizará el método de listas y mediante un *for* loop se construirá una lista para todos los genes selecionados *data_sel* y se generarán automáticamente todos los boxplot de cada gen:
+```{r}
+# Primero se crea una lista vacía para luego almacenar los boxplot individuales:
+plot_list <- list()
+
+# Generar un boxplot para cada gen y agregarlo a la lista utilizando un for loop:
+for (gen in genes) {
+  bp <- ggplot(data_sel, aes(x = trat, y = .data[[gen]], fill = trat)) +
+    geom_boxplot() + 
+    theme_minimal() +
+    theme(legend.position = "none") +
+    labs(x = "Tratamiento") +
+    theme(axis.title.x = element_text(size = 8)) + # Tamaño de la label "Tratamiento"
+    theme(axis.title = element_text(size = 8))   # Tamaño de los títulos de los boxplot
+
+
+  
+  # Agregar cada gráfico a la lista
+  plot_list[[gen]] <- bp
+}
+```
+De esta forma se han realizado los 15 boxplot (uno para cada gen) y se pueden unir haciendo uso de la librería patchwork y la función *wrap_plots*:
+```{r, fig.cap="Figura 1: Boxplots de los distintos genes en función del tratamiento."}
+library(patchwork)
+
+combined_plot <- wrap_plots(plot_list, ncol = 3)  +
+    plot_annotation(title = "Boxplots de expresión de genes y tratamientos") &
+    theme(plot.title = element_text(hjust = 0.5))
+
+# Mostrar el gráfico combinado
+combined_plot
+```
+
+<br>
+Los diagramas de caja (boxplot) exhiben cómo se distribuye la expresión de los distintos genes al someterse a dos tipos de tratamiento diferentes: *tratamiento A* y *tratamiento B*. Cada gen muestra patrones únicos en su expresión que podrían estar vinculados a sus funciones biológicas específicas como la respuesta inmunológica, inflamación, metabolismo y señalización celular.
+
+Respecto a los genes relacionados con la inflación como **AQ_TNF**  o **AQ_IL6**, presentan una amplia gama de valores atípicos lo que indica una respuesta diversificada de estos genes a los tratamientos. Esto sugiere que ambos tratamientos tienen un impacto diferente en la expresión de los genes proinflamtarios. Tambien se pueden percibir algunas diferencias en los genes **AQ_IFNG**  o **AQ_CD274**, donde el **AQ_IFNG** muestra mayor variación en su expresión entre tratamientos en comparación al **AQ_CD274**. Una lectura posible podría ser que los tratamientos están influyendo de forma más eficaz en la respuesta directamente relacionada al sistema inmunológico que en la elusión del mismo. Por otro lado, genes como **AQ_MAPK1 y AQ_FOX03**, implicados en la comunicación celular y la respuesta al estrés oxidativo presentan una variabilidad más baja entre los tratamientos realizados; hecho que puede indicar que estos genes son menos sensibles a los tratamientos aplicados (A y B).
+
+En resumen, los boxplots nos muestran que el tratamiento tiene un impacto variable en la expresión de genes dependiendo de su función. Esto destaca la importancia de realizar análisis específicos para cada grupo de genes según su rol y acción en los distintos procesos celulares y fisiológicos, así como la necesidad de aplicar tests estadísticos para medir sus valores de precisión y fiabilidad.
+
+### Ejercicio 2 
+Teniendo en cuenta los siguientes parámetros bioquímicos para toda la población: glucosa, leucocitos, linfocitos, neutrofilos, chol, hdl, hierro, igA, igE, igG, igN, ldl, pcr, transferrina, trigliceridos, cpk: 
+
+¿Qué interpretación sacáis de la distribución de los datos de las variables bioquímicas en toda la población? ¿Creéis que sigue una distribución normal o simétrica en la que se visualiza una distribución parecida a una campana de Gauss?
+
+Para responder a esta pregunta, se utilizará un enfoque muy parecido a la pregunta anterior dónde se creará una lista con todos los parámetros bioquímicos y se utilizará un loop para construir un histograma para cada parámetro. Además, se añadirá la densidad mediante la función *geom_density* para poder observar la distribución de cada parámetro bioquímico y ver si sigue o existe una normalidad. Para representar la densidad correctamente, se usará la función *after_stat(density)* de ggplot2 para calcular la densidad de los datos de forma normalizada y así poder compararla con distribución de los datos de cada parámetro mediante una línea roja:
+
+```{r, fig.cap="Figura 2: Histogramas de los distintos parámetros bioquímicos y su distribución."}
+# Lista de parámetros bioquímicos
+  parametros <- c("glucosa", "leucocitos", "linfocitos", "neutrofilos", 
+                  "chol", "hdl", "hierro", "igA", "igE", "igG", "igN", 
+                  "ldl", "pcr", "transferrina", "trigliceridos", "cpk")
+
+
+
+# Crear una lista para almacenar los gráficos
+hs_list <- list()
+
+# Generar un histograma con densidad para cada parámetro
+for (parametro in parametros) {
+  hs <- ggplot(data, aes(x = .data[[parametro]])) +
+    geom_histogram(aes(y = after_stat(density)), bins = 30, fill = "skyblue", color = "black")+
+    geom_density(color = "red", linewidth = 1) + # Línea roja para representar la densidad
+    labs(y ='densidad') +
+    theme(axis.title.y = element_text(size = 6)) + # Tamaño de la label "densidad"
+    theme_minimal()
+  
+  # Agregar cada gráfico a la lista
+  hs_list[[parametro]] <- hs
+}
+
+# Usar patchwork para mostrar los gráficos juntos
+combined_hs <- wrap_plots(hs_list, ncol = 4) +
+    plot_annotation(title = "Histogramas de parámetros bioquímicos") &
+    theme(plot.title = element_text(hjust = 0.5))
+
+combined_hs
+```
+
+<br>
+La mayoría de los histogramas presentan una distribución asimétrica que se extiende hacia la derecha, lo que indica que los valores de cada parámetro están concentrados en rangos bajos. Por otro lado, también se observan valores más altos que podrían representar individuos con parámetros anormales en la población. Por ejemplo, parámetros como **glucosa, leucocitos, triglicéridos y cpk** muestran una acumulación en valores bajos, hecho que nos lleva a pensar que solo una pequeña proporcion de la población tiene valores altos, posiblemente debido a ciertas condiciones o estados de salud específicos distintos del resto.
+
+La distribución de algunos parámetros, como **linfocitos, hdl, hierro, igA y transferrina**, se acercan más a una distribución normal, ya que presentan una forma más simétrica en forma de campana de Gauss y una menor desviación hacia un solo lado de la gráfica. Sin embargo, la mayoría de los parámetros, son claramente asimétricos y no presentan una distribución normal. Esto sugiere que estos parámetros no siguen una normalidad en la población general, lo cual es común en parámetros bioquímicos debido a variaciones individuales y la influencia de factores externos, por ejemplo la dieta, la genética o el estado de salud.
+
+### Ejercicio 3
+Mapear todos los valores de expresión de genes para poder visualizar posibles patrones entre los datos de los pacientes. Para responder esta pregunta, se realizará un heatmap gracias a la librería *pheatmap* en el que se visualizaran los datos crudos de todas las variables AQ (expresión de genes) en los distintos pacientes expresados numéricamente (1 a 67).
+
+Antes de poder realizar el heatmap o mapa de calor, primeramente se creará un subset de los datos para seleccionar aquellos genes que empiezen por *AQ*. A continuación, se determinará una semilla para poder reproducir el heatmap y evitar la aleatoriedad cada vez que se ejecuta el código y por último, se construirá el heatmap entre pacientes y la expresión génica para poder observar qué genes se encuentran más activos en relación a otros entre los distintos pacientes.
+
+En cuánto a la distancia de filas y columnas, se utilizará el método *euclideano* para poder representar la distancia más corta (línea recta) entre los distintos genes. Además, se procede a usar un *clustering method* o método de agrupación *ward.2* para poder agrupar los pacientes en función de la expresión AQ y poder observar y relacionar grupos similares. También se definirán los grupos o clústers a **4** tanto para las filas como para las columnas y se utilizará el método *scale='row'* para fijar la media de cada valor a 0 y su desviación estándard a 1 para poder comparar la expresión de los distintos genes en los distintos grupos de pacientes.
+
+
+```{r, fig.cap="Figura 3: Heatmap de la expresión génica de los genes AQ en los distintos pacientes."}
+# Seleccionar únicamente las columnas de expresión génica (AQ) del dataframe data
+data_AQ_pa <- data %>%
+  select(starts_with("AQ"))
+
+# Fijar semilla para evitar aleatoriedad
+set.seed(1995)
+
+# Escalar los datos de expresión génica para que sean comparables
+data_scaled <- scale(data_AQ_pa)
+
+
+# Crear el heatmap
+heatmap <-pheatmap(
+  data_scaled,
+  clustering_distance_rows = "euclidean",
+  clustering_distance_cols = "euclidean",
+  clustering_method = "ward.D2", #Organizar los pacientes por similitud de expresión génica
+  scale = "row", #Media 0 y desviación estándard 1
+  color = colorRampPalette(c("darkgreen","white","purple"))(50),
+  main = "Mapa de calor de la expresión génica (AQ)",
+  fontsize_row = 6,
+  fontsize_col = 6,
+  cutree_rows = 4, #Número de grupos de filas
+  cutree_cols = 4 #Número de grupos de columnas
+)
+#Mostrar el heatmap
+heatmap
+```
+
+<br>
+
+El mapa de calor muestra la expresión génica medida mediante cuantificación absoluta (AQ) en diversos pacientes, organizada en función de patrones de similitud en 4 grupos. En este heatmap, podemos observar patrones de expresión de genes que son similares o diferenciados entre los distintos grupos de pacientes. Estos patrones se observan mediante la agrupación jerárquica (dendrogramas) en la parte superior y el lado izquierdo de la figura, los cuales se organizan en función de sus niveles de expresión.
+
+En cuanto a los genes, existen también patrones de expresión diferenciada. Algunos grupos de genes están altamente expresados (colores más intensos en púrpura) en ciertos pacientes, mientras que otros muestran niveles de expresión bajos o nulos (colores en verde claro o neutros). Esto indica que hay grupos de genes que podrían estar respondiendo de manera conjunta entre los distintos tratamientos sugeriendo la existencia de posibles relaciones funcionales o reguladoras entre genes específicos, los cuales podrían estar involucrados en procesos similares en el organismo hecho que explicaría su expresión conjunta en el *heatmap*.
+
+Una observación que podemos realizar, es que algunos grupos de pacientes presentan perfiles de expresión similares, lo cual puede indicar que están respondiendo de manera parecida a los distintos tratamientos (A y B). Podemos observar diferencias de forma visual ya que forman bloques de color similares en intensidad y tonalidad cómo en el grupo de pacientes en la parte inferior a la izquierda que tienen los genes *AQ_NOX5, AQ_ADIPOQ y AQ_SLCS2A4* en un nivel de expresión muy elevado (entre 2 y 4) y se observa una gran mancha violácea. Por otro lado, los genes *AQ_NFKB1, AQ_AQ_SREBF1, AQ_LDHA, AQ_JAK1 y AQ_FASN* en pacientes del 14 al 23 (en el tercer bloque del dendograma horizontal en la parte central a la derecha) dónde se observa un grupo similar de genes que tienen poca expresión con valores cercanos a zero e incluso negativos representados con un color verdoso o blanco.
+
+En resumen, tanto los pacientes como los genes se agrupan en patrones que reflejan niveles de expresión similares y niveles de expresión diferenciados, lo cual proporciona información importante sobre posibles mecanismos de acción y respuesta de los genes y su expresión entre los distintos tratamientos y que varían en función de los pacientes observados.
+
+<br>
+<br>
+
+## Conclusiones
+Una vez realizada la práctica y después de analizar los resultados obtenidos, se pueden extraer las siguientes conclusiones:
+
+* La práctica ayuda a utilizar diferentes métodos de representación y visualización de datos biológicos que se pueden usar directamente en Rstudio.
+
+* La utilización de herramientas visuales facilita la interpretación de resultados en conjuntos de datos muy grandes.
+
+* Visualizar datos de forma conjunta (usando patchwork) ayuda mucho a la interpretación conjunta de resultados.
+
+* Cómo más grande es un conjunto de datos (y mayor sus interacciones) más dificulta su interpretación y toma de decisiones.
+
+* Usar técnicas cómo Rmarkdown facilitan la comprensión y presentación de informes técnicos facilitando la utilización de las distintas técnicas con la combinación texto - código.
+
+
+
+
+
+
+
+
+
