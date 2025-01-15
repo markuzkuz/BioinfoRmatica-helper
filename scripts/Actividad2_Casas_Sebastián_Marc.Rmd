@@ -1,0 +1,280 @@
+---
+title: "Actividad 2: Análisis descriptivos en R"
+author: "Marc Casas Sebastián - Máster Bioinformática UNIR - Estadística y R"
+date: "2024-12-26 - Curso 2024-2025"
+output: 
+  html_document:
+    theme: default
+    css: custom1.css
+    toc: true
+    toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+# Cargar librerías
+library(tidyverse)
+library(gtsummary)
+library(nortest)
+library(car)
+library(flextable)
+```
+
+<br>
+<br>
+
+## Objetivos de la actividad
+El objetivo principal de la actividad es aplicar los conceptos aprendidos sobre bioestadística descriptiva. Utilizar un dataset que contiene información de la expresión de 46 genes en 65 pacientes, cada uno con distintos tipos de tratamiento y características tumorales. En primer lugar, se pretende comprobar la normalidad de la distribución de la expresión de los genes para asegurar los supuestos estadísticos necesarios. Luego, se calcularán los descriptivos de la base de datos (variables bioquímicas, síntomas, variables sociodemográficas y de los genes) en: 1) función del tratamiento y del tipo de tumor; 2) según la edad categorizando por la mediana.
+<br>
+<br>
+Para la realización de la actividad, se cargará el dataset de interés «Dataset expresión genes.csv», el cual se trata de una base de datos de 65 pacientes que contiene información de la expresión de 46 genes con diferentes funciones. Además de estas variables, contiene otras variables de interés como el tratamiento (A o B) que siguen cada paciente, tipo de tumor que tienen (colorrectal, pulmón y mama) y la extensión tumoral (localizado, metastásico o regional). Por último, se recoge información de variables bioquímicas, síntomas y otras variables sociodemográficas.
+
+## Resolución de ejercicios
+### Ejercicio 1
+El primer ejercicio consiste en comprobar la normalidad de los genes y realizar una interpretación de los resultados obtenidos:
+
+Utilizar pruebas estadísticas de normalidad (se utilizará Shapiro-Wilk cuando la N es pequeña, si no se usarán otras como addtest).
+
+Reflejar los valores p del contraste de hipótesis en una tabla modelo 1:
+
+```{r}
+# Cargar el csv de expresión génica
+data <- read.csv("./data/expresion genes.csv")
+
+# Seleccionar solo las columnas de los genes (empiezan con "AQ_")
+genes <- data %>% select(starts_with("AQ_"))
+
+
+# Crear una tabla vacía para almacenar resultados de las pruebas de normalidad
+normality_results <- data.frame(
+  Variable = colnames(genes),
+  Test = NA,
+  P_value = NA,
+  Interpretación = NA
+)
+
+```
+
+
+Una vez tenemos los genes seleccionados y la tabla preparada, se evaluará la normalidad de cada gen utilizando un for loop que evaluará si el tamaño muestral es inferior de 50, utilizando un *Shapiro-Wilk* o si el tamaño poblacional es mayor de 50, dónde se utilizará el test *Anderson-Darling* :
+
+```{r}
+
+# Evaluar normalidad para cada gen
+for (i in 1:ncol(genes)) {
+  # Seleccionar columna del gen
+  gene <- genes[[i]]
+  
+  # Aplicar el test de normalidad correspondiente:
+  if (nrow(data) <= 50) {
+    # Shapiro-Wilk
+    p_val <- shapiro.test(gene)$p.value
+    test_name <- "Shapiro-Wilk"
+  } else {
+    # Anderson-Darling
+    p_val <- ad.test(gene)$p.value
+    test_name <- "Anderson-Darling"
+  }
+  
+  # Guardar los resultados en la tabla:
+  normality_results$Test[i] <- test_name
+  normality_results$P_value[i] <- round(p_val, 3)
+  normality_results$Interpretación[i] <- ifelse(p_val < 0.05, "No Normal", "Normal")
+}
+```
+
+Una vez finalizada la ejecución del código para los diferentes tests de normalidad, se procede a la creación de la tabla 1 para facilitar la presentación de los resultados:
+
+```{r}
+# Crear tabla en formato horizontal siguiendo el modelo1 utilizando flextable:
+tabla1 <- normality_results %>%
+  flextable() %>%
+  set_header_labels(
+    Variable = "Variable",
+    Test = "Test utilizado",
+    P_value = "Valor p",
+    Interpretación = "Interpretación"
+  ) %>%
+  colformat_double(j = 3, digits = 3) %>%  # P-valor con 3 decimales
+  autofit() %>% #Autoajustar al contenido
+  align(align = "center", part = "all") %>%  # Centrar texto
+  add_header_lines("Tabla 1. Pruebas de Normalidad para la Expresión Génica") %>%
+  add_footer_lines("Notas: Test utilizados: Shapiro-Wilk (SW) y Anderson-Darling (AD). Valores p ≤ 0.05 indican distribución no normal.")
+
+tabla1
+
+``` 
+
+Si observamos con atención la tabla 1, podemos ver las variables que representan un tipo de gen distinto en la columna de *Variable* seguido por el *test* utilizado para cada una de ellas que se define en el if loop para la prueba de normalidad. Para esta prueba, se utiliza un Kruskal-Wallis para tamaños poblacionales < 50 y Anderson - Darling si el valor es superior a 50. A continuación en la tabla, observamos la columna del *p-valor* con una precisión de 3 decimales y por último la *interpretación* que se divide en normalidad o no normalidad en función del test y el p-valor obtenido. Cómo podemos observar en la tabla, para cada gen se aplica el test Anderson-Darling y se obtiene un p-valor que es inferior a 0.05 en todos los casos hecho que nos proporciona el resultado de la interpretación como *no normal* para todos los genes con este test estadístico concreto.
+
+### Ejercicio 2
+
+Calcular y analizar estadísticas descriptivas de los valores sin transformar (media + desviación estándar si son paramétricas, mediana + rango intercuartílico (p25-p75) si no lo son) de las variables bioquímicas, síntomas, sociodemográficas y de los genes:
+
+Para empezar la resolución del ejercicio, se empezará seleccionando las variables **bioquímicas, síntomas y sociodemográficas** del dataset que sean **cuantitativas**:
+
+````{r}
+# Seleccionar las variables cuantitativas:
+cuantitativas <- data %>%
+  select(edad, glucosa, leucocitos, linfocitos, neutrofilos, pcr, trigliceridos,
+         chol, hdl, ldl, hierro, igA, igE, igG, igN, transferrina, cpk, calidad_fisica, calidad_mental, score_dieta)
+
+# Comprobación de normalidad (siguiendo la misma lógica que en el ejercicio anterior)
+# Creación de la tabla:
+normalidad_cuantitativas <- data.frame(
+  Variable = colnames(cuantitativas),
+  Test = NA,
+  P_value = NA,
+  Interpretación = NA
+)
+
+for (i in 1:ncol(cuantitativas)) {
+  variable <- cuantitativas[[i]]
+  
+  # Test de normalidad
+  if (nrow(data) <= 50) {
+    p_val <- shapiro.test(variable)$p.value
+    test_name <- "Shapiro-Wilk"
+  } else {
+    p_val <- ad.test(variable)$p.value
+    test_name <- "Anderson-Darling"
+  }
+  
+  # Guardar resultados
+  normalidad_cuantitativas$Test[i] <- test_name
+  normalidad_cuantitativas$P_value[i] <- formatC(p_val, format = "e", digits = 3)
+  normalidad_cuantitativas$Interpretación[i] <- ifelse(p_val < 0.05, "No Normal", "Normal")
+}
+
+# Se descomenta el código para visualizar la tabla de normalidad para las variables cuantitativas.
+
+#print(normalidad_cuantitativas)
+
+# Estadísticas descriptivas
+descriptivos_cuantitativas <- cuantitativas %>%
+  summarise(across(
+    everything(), 
+    # Función para seleccionar cálculo (media vs mediana) según normalidad
+    ~ if (normalidad_cuantitativas$Interpretación[which(normalidad_cuantitativas$Variable == cur_column())] == "Normal") {
+      sprintf("%.1f (%.1f)", mean(.), sd(.))  # Media (SD) si es normal
+    } else {
+      sprintf("%.1f (%.1f - %.1f)", median(.), quantile(., 0.25), quantile(., 0.75)) # Mediana (RIQ) si la distribución no es normal
+    }
+  )) 
+
+# No se imprimirá en pantalla los estadísticos descriptivos pero se puede descomentar la siguiente línia para observarlos:
+
+# print(descriptivos_cuantitativas) 
+
+````
+
+A continuación, se seleccionarán las **variables bioquímicas, síntomas y sociodemográficas** que sean **categórias**:
+
+````{r}
+# Seleccionarl las variables categóricas:
+categoricas <- data %>%
+  select(sexo, exfumador, hta, dm, alergia, cardiopatia, ETE, neumopatia, hepatopatia,
+colelitiasis, utolitiasis, ITU, renal, neuropatia, corticoides, trat, tumor, extension, tos, disnea, expect, secrecion, dolor_garg, escalofrios, fiebre, diarrea, nauseas, vomitos, cefalea, mareo, cansancio, anosmia, disgueusia, dolor_hueso, dolor_abdo, perd_ape)
+
+# Crear tabla de frecuencias absolutas y relativas
+descriptivos_categoricas <- map(categoricas, ~ {
+  tabla <- table(.)
+  prop <- prop.table(tabla)
+  list(tabla = tabla, prop = prop)
+})
+
+# Para mostrar las frecuencias y proporciones de forma entendible, se pueden descomentar las siguientes líneas:
+
+# Mostrar frecuencias y proporciones
+#for (var in names(descriptivos_categoricas)) {
+#  cat("\nVariable:", var, "\n")
+#  print(descriptivos_categoricas[[var]]$tabla) # Frecuencia absoluta
+#  print(descriptivos_categoricas[[var]]$prop)  # Proporciones
+#}
+
+````
+
+Para continuar, se seleccionarán las variables correspondientes a los **genes** (que empiezan por AQ_) y se creará la **tabla2** con la información descriptiva estratificada por tratamiento y tumor: 
+
+```{r}
+# Seleccionar variables de interés
+data_genes <- data %>%
+  select(trat, tumor, starts_with("AQ_"))
+
+# Crear tabla descriptiva con estratificación por tratamiento y tumor utilizando tabl_strata:
+tabla2 <- data_genes %>%
+  tbl_strata(
+    strata = trat,  # Nivel 1: Tratamiento (tratA y tratB)
+    .tbl_fun = ~ .x %>%
+      tbl_summary(
+        by = tumor,  # Nivel 2: Tipo de tumor (CCR, CM, CP)
+        statistic = all_continuous() ~ "{median} ({p25}, {p75})", # Mediana e IQR
+        digits = all_continuous() ~ function(x) format(x, digits = 2, scientific = TRUE) # Notación científica
+      ) %>%
+      add_p(
+        test = all_continuous() ~ "kruskal.test",                 # Test no paramétrico Kruskal-Wallis
+        pvalue_fun = ~style_pvalue(.x, digits = 3)                # p-value con 3 decimales
+      )
+  ) %>%
+  modify_header(label = "**Variable**") %>%
+  modify_caption("**Tabla 2. Descriptivos según tratamiento y tipo de tumor**") # Título
+
+# Mostrar tabla en R
+tabla2
+
+```
+
+En esta tabla podemos observar las distintas estadísticas descriptivas de las variables genéticas analizadas en dos grupos de tratamiento *(tratA y tratB)*, subdivididos en tres categorías según el tipo de tumor: *CCR, CM y CP*. También se visualizan las medianas y rangos intercuartílicos (p25–p75) debido a la distribución no normal de los datos en notación científica. Además, se incluyen los *p-valores*, derivados del test estadístico Kruskal-Wallis para comparar diferencias entre los grupos.
+
+En el tratamiento A, podemos ver genes cómo AQ_ADIPOQ, AQ_ALOX5 y AQ_ARG1 que muestran diferencias significativas entre los grupos de tumor. Este hecho, sugiere que estos genes podrían estar diferencialmente expresados dependiendo del tipo de tumor. Por otro lado, genes como AQ_BMP2, AQ_CCR5, AQ_G6PD muestran valores superiores al 0.05, indicando una diferencia no estadísticamente significativa para estos tipos de tumores en este tratamiento.
+
+Para el tratamiento B, los mismos genes (AQ_ADIPOQ y AQ_ALOX5) mantienen significancia, mientras que AQ_ARG1 se acerca al umbral pero no llega a ser significativo. También ocurre a la inversa cómo por ejemplo con AQ_G6PD que no presenta una respuesta significativa con el tratamiento A pero si con el tratamiento B. Estos resultados sugieren la existencia de patrones similares entre los tratamientos, pero también destacan diferencias en la expresión genética para algunos genes, lo cual es interesante y podría ser relevante para evaluar la respuesta terapéutica ante tratamientos.
+
+Finalmente, también observamos genes como AQ_BMP2 y AQ_IL6 que no presentan diferencias significativas en ninguno de los tratamientos, hecho que indica una expresión más homogénea y no representativa de estos genes independientemente del tratamiento aplicado.
+
+
+Por último, se realizará la **tabla3** dónde se realizarán los descriptivos para los **genes** en función de la variable categórica de la edad:
+
+```{r}
+# Tabla3: Descriptivos en función de la edad:
+# Crear variable categórica para edad
+data_genes <- data %>%
+  mutate(edad_cat = ifelse(edad < median(edad, na.rm = TRUE), "< Mediana", "≥ Mediana")) %>%
+  select(edad_cat, starts_with("AQ_"))
+
+tabla3 <- data_genes %>%
+  tbl_summary(
+    by = edad_cat,
+    statistic = all_continuous() ~ "{median} ({p25}, {p75})",
+    digits = all_continuous() ~ function(x) format(x, digits = 2, scientific = TRUE)
+  ) %>%
+  add_p(
+    test = all_continuous() ~ "kruskal.test", # Kruskal-Wallis
+    pvalue_fun = ~style_pvalue(.x, digits = 3)
+  ) %>%
+  modify_header(label = "**Variable**") %>%
+  modify_caption("**Tabla 3. Descriptivos según la edad**")
+
+# Mostrar tabla
+tabla3
+
+```
+
+Observando la tabla3, contiene las mismas variables genéticas pero en función de la edad, dividiendo a los pacientes en dos grupos según si son menores o mayores a la mediana. También se reflejan en la tabla las medianas y rangos intercuartílicos, junto con los p-valores obtenidos de la prueba de normalidad aplicada que para este caso es la de Kruskal-Wallis.
+
+Si nos fijamos en la columna del p-valor, podemos observar cómo ninguna de las comparaciones entre los grupos de edad resulta estadísticamente significativa (p-valor > 0.05). Esto implicaría que la edad no tiene una relación aparente con la expresión de estos genes.
+
+Por ejemplo, para el gen AQ_ADIPOQ, las medianas y rangos intercuartílicos son similares en ambos grupos (4.1e-10 frente a 4.3e-10) con un p-valor = 0.875. Este resultado sugiere que las diferencias en la expresión génica observadas previamente en la Tabla 2 están más relacionadas con el tipo de tumor y tratamiento que con la edad de los pacientes. Sin embargo, dado que los p-valores son mayores a 0.05, se descarta una asociación significativa con la edad en este conjunto de datos.
+
+
+## Conclusiones
+
+* Durante este análisis se ha analizado la expresión de 46 genes en pacientes con diferentes tipos de tumor, evaluando el impacto del tratamiento y la edad.
+
+* La mayoría de los genes mostraron distribuciones no normales, lo que justifica el uso de pruebas y tests estadísticos no paramétricos.
+
+* Hay genes que presentan diferencias significativas según el tipo de tumor y tratamiento, hecho que puede servir como biomarcadores para distinguir entre subgrupos tumorales.
+
+* No se encuentran diferencias significativas en la expresión génica entre grupos de edad, descartando la edad como un factor determinante para el análisis.
+
+
+
