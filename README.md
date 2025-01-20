@@ -1,6 +1,4 @@
 # BioinfoRmatica-helper
-Bienvenido a BioinfoRmatica-helper ! Tu repositorio de confianza dónde encontrarás: documentos, scripts, gráficos y todo lo que necesitas saber para utilizar R para el análisis bioinformático.
-# BioinfoRmatica-helper
 
 Bienvenido a **BioinfoRmatica-helper**, tu repositorio de confianza para el análisis bioinformático y la visualización de datos en R. Este repositorio contiene una variedad de recursos útiles, desde documentos de referencia hasta scripts y resultados de análisis. A continuación, se describe la estructura del repositorio y el contenido disponible.
 
@@ -27,8 +25,8 @@ Documentos de referencia y materiales de apoyo:
 
 #### `ejercicios`
 Actividades prácticas relacionadas con la bioinformática:
-- `mubio02_act1.docx`: Primera actividad
-- `mubio02_act2.docx`: Segunda actividad
+- `mubio02_act1.docx`: Pautas para la realización de la primera actividad.
+- `mubio02_act2.docx`: Pautas para la realización de la segunda actividad
 
 #### `plots`
 Resultados visuales de los análisis:
@@ -39,7 +37,7 @@ Resultados visuales de los análisis:
 Scripts en R utilizados para los análisis:
 - `Actividad1_Casas_Sebastián_Marc.Rmd`: Script de la primera actividad para la Representación gráfica de datos y análisis de resultados.
 - `Actividad2_Casas_Sebastián_Marc.Rmd`: Script de la segunda actividad dónde se trabaja con Análisis descriptivos en R.
-- `Exercici1.R`: Ejercicio adicional en R.
+- `Exercici1.R`: Ejercicio 1 addicional en R studio.
 - `Práctica gráficos Tema 3.R`: Script para prácticas de gráficos del tema 3.
 - `Tema 1 y 2 de R práctica.R`: Script con ejercicios de los temas 1 y 2.
 - `script_actividad2.R`: Script adicional dónde se han realizado las pruebas previas el Rmarkdown de la actividad 2.
